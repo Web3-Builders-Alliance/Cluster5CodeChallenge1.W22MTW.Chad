@@ -57,7 +57,7 @@ describe("Cosmwasm Template Tests", () => {
         //upload NFT contract to testnet twice and get two code_id's
         let client = await setupClient(mnemonic);
         let sender = await getAddress(mnemonic);
-        let res = await client.upload(sender, cw20_base_wasm, "auto", undefined);
+        let res = await client.upload(sender, wasmswap_wasm, "auto", undefined);
         console.log(res);
     }).timeout(100000);
 
