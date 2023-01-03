@@ -3,7 +3,6 @@ import { CosmWasmClient, SigningCosmWasmClient, Secp256k1HdWallet, GasPrice, Coi
 import * as fs from 'fs';
 import axios from 'axios';
 
-
 const rpcEndpoint = "https://juno-testnet-rpc.polkachu.com/";
 
 const config = {
@@ -20,13 +19,13 @@ const mnemonic =
 
 const prefix = "juno";
 
-const amm_code_id = 0;
-const cw20_code_id = 0;
+const amm_code_id = 3861;
+const cw20_code_id = 3862;
 
-const cw20_token1_address = "";
-const cw20_token2_address = "";
+const cw20_token1_address = "juno1pjg5t58r0al94eeh4gsz5tttn9e7rqdy2mhjskwnnkzcxz7cv2usvege30";
+const cw20_token2_address = "juno1uya7adyqchlm5w7ltzrpjsmt0wlxxn3a8n5ad9x0swkj3y2f97tqkf8yrx";
 const cw20_token3_address = "";
-const amm_token1_token2 = "";
+const amm_token1_token2 = "juno1ny0pzgu7083c5qcc605ldsfy3smvhnwplmcjxlkc9ne5ptvqvlfqrpr02n";
 
 async function setupClient(mnemonic:string): Promise<SigningCosmWasmClient> {
     let gas = GasPrice.fromString("0.025ujunox");
@@ -53,7 +52,7 @@ describe("Cosmwasm Template Tests", () => {
         client.sendTokens(await getAddress(mnemonic), "juno1jjeaun6mlrtv0wzfpt9u57hx6keqsvv7ltuj4j", [coin], "auto");
     }).timeout(100000);
 
-    it("Upload wasm-swap to testnet", async () => {
+    xit("Upload wasm-swap to testnet", async () => {
         //upload NFT contract to testnet twice and get two code_id's
         let client = await setupClient(mnemonic);
         let sender = await getAddress(mnemonic);
@@ -62,25 +61,24 @@ describe("Cosmwasm Template Tests", () => {
     }).timeout(100000);
 
     xit("Upload cw20-base to testnet", async () => {
-        //upload NFT contract to testnet twice and get two code_id's
+        //upload FT contract to testnet twice and get two code_id's
         let client = await setupClient(mnemonic);
         let sender = await getAddress(mnemonic);
         let res = await client.upload(sender, cw20_base_wasm, "auto", undefined);
         console.log(res);
     }).timeout(100000);
 
-    /*
-        let msg = cw20_base::msg::InstantiateMsg {
-        name,
-        symbol,
-        decimals: 6,
-        initial_balances: vec![Cw20Coin {
-            address: owner.to_string(),
-            amount: balance,
-        }],
-        mint: None,
-        marketing: None,
-    };*/
+    //     let msg = cw20_base::msg::InstantiateMsg {
+    //     name,
+    //     symbol,
+    //     decimals: 6,
+    //     initial_balances: vec![Cw20Coin {
+    //         address: owner.to_string(),
+    //         amount: balance,
+    //     }],
+    //     mint: None,
+    //     marketing: None,
+    // };
 
     xit("Instantiate token1 cw20-base on testnet", async () => {
         let client = await setupClient(mnemonic);
@@ -109,29 +107,85 @@ describe("Cosmwasm Template Tests", () => {
     };*/
 
     xit("Instantiate token1-token2 wasm-swap on testnet", async () => {
-        let client = await setupClient(mnemonic);
-        let sender = await getAddress(mnemonic);
-
+      let client = await setupClient(mnemonic);
+      let sender = await getAddress(mnemonic);
+      let msg = {
+        token1_denom: { cw20: cw20_token1_address },
+        token2_denom: { cw20: cw20_token2_address },
+        lp_token_code_id: cw20_code_id,
+        owner: sender,
+        lp_fee_percent: "0.2",
+        protocol_fee_percent: "0.1",
+        protocol_fee_recipient: sender,
+      };
+      let res = await client.instantiate(
+        sender,
+        amm_code_id,
+        msg,
+        "token1/token2 AMM",
+        "auto",
+        {admin:sender}
+      );
+      console.log(res);
     }).timeout(100000);
 
-    /*    AddLiquidity {
-        token1_amount: Uint128,
-        min_liquidity: Uint128,
-        max_token2: Uint128,
-        expiration: Option<Expiration>,
-    },*/
+  /*
+    IncreaseAllowance {
+        spender: String,
+        amount: Uint128,
+        expires: Option<Expiration>,
+    },
+    */
 
     xit("add token1-token2 liquidity to swap on testnet", async () => {
-        //using contract address mint a NFT on the testnet.
         let client = await setupClient(mnemonic);
         let sender = await getAddress(mnemonic);
 
-        //look at increase allowance msg for cw20.
-
-        //add and allowance token1 and token2
+        //add an allowance for token1 and token2
+        let add_allowance1_res = await client.execute(
+          sender,
+          cw20_token1_address,
+          {
+            increase_allowance: {
+              spender: amm_token1_token2,
+              amount: "100000",
+            }
+          },
+          "auto",
+        );
+        let add_allowance2_res = await client.execute(
+          sender,
+          cw20_token2_address,
+          {
+            increase_allowance: {
+              spender: amm_token1_token2,
+              amount: "100000",
+            }
+          },
+          "auto",
+        );
 
         //add liquidity
- 
+        /*    AddLiquidity {
+            token1_amount: Uint128,
+            min_liquidity: Uint128,
+            max_token2: Uint128,
+            expiration: Option<Expiration>,
+        },*/
+      let add_liquidity_res = await client.execute(
+        sender,
+        amm_token1_token2,
+        {
+          add_liquidity: {
+            token1_amount: "100000",
+            min_liquidity: "1000",
+            max_token2: "100000",
+          }
+        },
+        "auto"
+      )
+      console.log({ add_allowance1_res, add_allowance2_res, add_liquidity_res })
+
     }).timeout(100000);
 
 
@@ -178,5 +232,5 @@ describe("Cosmwasm Template Tests", () => {
         let client = await setupClient(mnemonic);
         let sender = await getAddress(mnemonic);
     }).timeout(100000);
-    
+
 });
